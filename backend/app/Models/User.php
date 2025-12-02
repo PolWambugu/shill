@@ -6,15 +6,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 
-/**
- * @method static \Laravel\Sanctum\PersonalAccessToken createToken(string $name = '', array $abilities = ['*'])
- * @method \Laravel\Sanctum\TokenCollection tokens()
- * @mixin \Laravel\Sanctum\HasApiTokens
- */
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
-    use HasFactory, Notifiable, HasApiTokens;
+    use HasApiTokens, HasFactory, Notifiable;
+
     protected $fillable = [
         'name',
         'email',
