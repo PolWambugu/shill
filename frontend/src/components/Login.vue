@@ -10,13 +10,15 @@
     <div
       class="relative bg-black bg-opacity-40 backdrop-blur-lg p-10 rounded-xl shadow-2xl w-full max-w-md border border-gray-700"
     >
-      <!-- Title -->
       <h2 class="text-3xl font-bold text-center text-white mb-8">Login Form</h2>
 
-      <!-- Form -->
-      <form @submit.prevent="login" class="space-y-6">
+      <!-- Error Message -->
+      <p v-if="errorMessage" class="text-red-400 text-center mb-4 font-semibold">
+        {{ errorMessage }}
+      </p>
 
-        <!-- Email Field -->
+      <form @submit.prevent="login" class="space-y-6">
+        <!-- Email -->
         <div class="relative">
           <span class="absolute left-4 top-4 text-gray-400 text-xl">👤</span>
           <input
@@ -28,7 +30,7 @@
           />
         </div>
 
-        <!-- Password Field -->
+        <!-- Password -->
         <div class="relative">
           <span class="absolute left-4 top-4 text-gray-400 text-xl">🔒</span>
           <input
@@ -50,37 +52,17 @@
         <!-- Login Button -->
         <button
           type="submit"
-          class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-md text-lg"
+          class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-md text-lg flex justify-center items-center gap-2"
+          :disabled="loading"
         >
+          <span v-if="loading" class="loader-border w-5 h-5 border-2 rounded-full border-white border-t-transparent animate-spin"></span>
           LOGIN
         </button>
       </form>
 
-      <!-- Divider -->
-      <div class="text-center my-6 text-gray-300">Or login with</div>
-
-      <!-- Social Buttons -->
-      <div class="flex justify-center space-x-4">
-        <button
-          class="flex items-center gap-2 bg-blue-700 hover:bg-blue-600 text-white px-6 py-2 rounded-md font-semibold"
-        >
-          <span class="text-xl">f</span> Facebook
-        </button>
-
-        <button
-          class="flex items-center gap-2 bg-pink-600 hover:bg-pink-500 text-white px-6 py-2 rounded-md font-semibold"
-        >
-          <span class="text-xl">📷</span> Instagram
-        </button>
-      </div>
-
-      <!-- Sign Up -->
       <p class="text-center text-gray-200 mt-6">
         Don't have account?
-        <router-link
-          to="/register"
-          class="text-blue-400 hover:text-blue-300 font-bold"
-        >
+        <router-link to="/register" class="text-blue-400 hover:text-blue-300 font-bold">
           Signup Now
         </router-link>
       </p>
@@ -89,31 +71,31 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
-import { useRouter } from "vue-router";
-import { useAuthStore } from "@/stores/auth";
+import { ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { useAuthStore } from '@/stores/auth';
 
-const email = ref("");
-const password = ref("");
+const email = ref('');
+const password = ref('');
+const errorMessage = ref('');
+const loading = ref(false);
+
 const router = useRouter();
 const auth = useAuthStore();
 
 const login = async () => {
-  // 1. Attempt login using the auth store (which should handle the API call)
-  await auth.login({ email: email.value, password: password.value });
+  errorMessage.value = '';
+  loading.value = true;
 
-  // 2. Check the user's role from localStorage after successful login
-  const userRole = localStorage.getItem('user_role');
+  try {
+    await auth.login({ email: email.value, password: password.value });
 
-  // 3. Redirect based on the role
-  if (userRole === 'admin') {
-    router.push("/admin");
-  } else {
-    router.push("/dashboard");
+    if (auth.user.role === 'admin') router.replace('/admin');
+    else router.replace('/dashboard');
+  } catch (err) {
+    errorMessage.value = auth.error || 'Login failed. Try again.';
+  } finally {
+    loading.value = false;
   }
 };
 </script>
-
-<style scoped>
-/* Smooth corners & shadows */
-</style>

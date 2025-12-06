@@ -1,72 +1,55 @@
-import { createRouter, createWebHistory } from 'vue-router'
-import Home from '@/views/Home.vue'
-import Login from '@/components/Login.vue'
-import SignUp from '@/components/SignUp.vue'
-import DashBoard from '@/components/DashBoard.vue'
-import Admin from '@/views/Admin.vue' // 1. IMPORT ADMIN VIEW
+import { createRouter, createWebHistory } from 'vue-router';
+import { useAuthStore } from '@/stores/auth';
+
+import Home from '@/views/Home.vue';
+import Login from '@/components/Login.vue';
+import SignUp from '@/components/SignUp.vue';
+import DashBoard from '@/components/DashBoard.vue';
+import Admin from '@/views/Admin.vue';
 
 const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/', component: Home },
-    { path: '/login', component: Login },
-    { path: '/register', component: SignUp },
+
+    { path: '/login', component: Login, meta: { hideLayout: true } },
+    { path: '/register', component: SignUp, meta: { hideLayout: true } },
+
     { path: '/dashboard', component: DashBoard, meta: { requiresAuth: true } },
+    { path: '/profile', component: () => import('@/components/Profile.vue'), meta: { requiresAuth: true } },
+    { path: '/emissions', component: () => import('@/components/CarbonEmissionsInputForm.vue'), meta: { requiresAuth: true } },
+    { path: '/waste', component: () => import('@/components/WasteTrackingInputForm.vue'), meta: { requiresAuth: true } },
+    { path: '/resources', component: () => import('@/components/ResourceUsageInputForm.vue'), meta: { requiresAuth: true } },
+    { path: '/suppliers', component: () => import('@/components/SupplierList.vue'), meta: { requiresAuth: true } },
+
+    { path: '/admin', component: Admin, meta: { requiresAuth: true, requiresAdmin: true } },
+
     { path: '/about', component: () => import('@/components/AboutUs.vue') },
     { path: '/contact', component: () => import('@/components/Contact.vue') },
-{ path: '/privacy', component: () => import('@/components/PrivacyPolicy.vue') },
-{ path: '/profile', component: () => import('@/components/Profile.vue'), meta: { requiresAuth: true } },
-    { 
-      path: '/emissions', 
-      component: () => import('@/components/CarbonEmissionsInputForm.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/waste',
-      component: () => import('@/components/WasteTrackingInputForm.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/resources',
-      component: () => import('@/components/ResourceUsageInputForm.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/suppliers',
-      component: () => import('@/components/SupplierList.vue'),
-      meta: { requiresAuth: true }
-    },
-    // 2. INTEGRATE ADMIN ROUTE INTO THE ARRAY
-    {
-      path: '/admin',
-      name: 'Admin',
-      component: Admin,
-      // Use meta fields for checking in the global guard
-      meta: { requiresAuth: true, requiresAdmin: true } 
-    }
+    { path: '/privacy', component: () => import('@/components/PrivacyPolicy.vue') }
   ]
-})
+});
 
-// Consolidated Global Navigation Guard
+// Reactive navigation guard using Pinia store
 router.beforeEach((to, from, next) => {
-  const token = localStorage.getItem('token')
-  const userRole = localStorage.getItem('user_role') // Get the stored role
+  const auth = useAuthStore();
 
-  // Check 1: General Authentication (Any protected route)
-  if (to.meta.requiresAuth && !token) {
-    // If auth is required but no token exists, redirect to login
-    return next('/login')
+  // logged-in users cannot access login/register
+  if ((to.path === '/login' || to.path === '/register') && auth.token) {
+    return next('/dashboard');
   }
 
-  // Check 2: Administrator Authorization
-  if (to.meta.requiresAdmin && (!token || userRole !== 'admin')) {
-    // If admin role is required, but user is not an admin, redirect to home
-    // This is the core logic for restricting the /admin route
-    return next('/') 
+  // protected routes
+  if (to.meta.requiresAuth && !auth.token) {
+    return next('/login');
   }
 
-  // Allow navigation if no guards are triggered
-  next()
-})
+  // admin-only
+  if (to.meta.requiresAdmin && auth.user?.role !== 'admin') {
+    return next('/');
+  }
 
-export default router
+  next();
+});
+
+export default router;

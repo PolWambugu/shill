@@ -9,3 +9,6 @@ password: 123456  (matches hashed password you already use)
 
 shill:  shill@example.com
         password
+
+shillbare3
+bareshill3@gmail.com

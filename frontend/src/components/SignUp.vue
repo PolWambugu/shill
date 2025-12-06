@@ -14,20 +14,23 @@
         <p class="text-2xl text-emerald-300">Create Your Account</p>
       </div>
 
+      <!-- Error Message -->
+      <p v-if="errorMessage" class="text-red-400 text-center mb-4 font-semibold">{{ errorMessage }}</p>
+
       <!-- Form -->
       <form @submit.prevent="register" class="space-y-6">
         <div class="grid md:grid-cols-2 gap-6">
           <input v-model="name" placeholder="Full Name" required 
-                 class="w-full px-6 py-5 bg-white bg-opacity-20 text-white placeholder-gray-300 border border-white border-opacity-30 rounded-xl focus:outline-none focus:border-emerald-400 focus:bg-opacity-30 transition text-lg" />
-          
+            class="w-full px-6 py-5 bg-white bg-opacity-20 text-white placeholder-gray-300 border border-white border-opacity-30 rounded-xl focus:outline-none focus:border-emerald-400 focus:bg-opacity-30 transition text-lg" />
+
           <input v-model="email" type="email" placeholder="Email Address" required 
-                 class="w-full px-6 py-5 bg-white bg-opacity-20 text-white placeholder-gray-300 border border-white border-opacity-30 rounded-xl focus:outline-none focus:border-emerald-400 focus:bg-opacity-30 transition text-lg" />
-          
+            class="w-full px-6 py-5 bg-white bg-opacity-20 text-white placeholder-gray-300 border border-white border-opacity-30 rounded-xl focus:outline-none focus:border-emerald-400 focus:bg-opacity-30 transition text-lg" />
+
           <input v-model="password" type="password" placeholder="Password" required 
-                 class="w-full px-6 py-5 bg-white bg-opacity-20 text-white placeholder-gray-300 border border-white border-opacity-30 rounded-xl focus:outline-none focus:border-emerald-400 focus:bg-opacity-30 transition text-lg" />
-          
+            class="w-full px-6 py-5 bg-white bg-opacity-20 text-white placeholder-gray-300 border border-white border-opacity-30 rounded-xl focus:outline-none focus:border-emerald-400 focus:bg-opacity-30 transition text-lg" />
+
           <input v-model="password_confirmation" type="password" placeholder="Confirm Password" required 
-                 class="w-full px-6 py-5 bg-white bg-opacity-20 text-white placeholder-gray-300 border border-white border-opacity-30 rounded-xl focus:outline-none focus:border-emerald-400 focus:bg-opacity-30 transition text-lg" />
+            class="w-full px-6 py-5 bg-white bg-opacity-20 text-white placeholder-gray-300 border border-white border-opacity-30 rounded-xl focus:outline-none focus:border-emerald-400 focus:bg-opacity-30 transition text-lg" />
         </div>
 
         <!-- Sign Up Button -->
@@ -46,30 +49,36 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
+import { ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { useAuthStore } from '@/stores/auth';
 
-const name = ref('')
-const email = ref('')
-const password = ref('')
-const password_confirmation = ref('')
-const router = useRouter()
-const auth = useAuthStore()
+const name = ref('');
+const email = ref('');
+const password = ref('');
+const password_confirmation = ref('');
+const errorMessage = ref('');
+
+const router = useRouter();
+const auth = useAuthStore();
 
 const register = async () => {
+  errorMessage.value = '';
+
   try {
     await auth.register({
       name: name.value,
       email: email.value,
       password: password.value,
       password_confirmation: password_confirmation.value
-    })
-    // SUCCESS — redirect
-    router.push('/dashboard')
+    });
+
+    localStorage.setItem('user_email', email.value);
+    localStorage.setItem('user_role', 'user');
+
+    router.replace('/dashboard'); // auto redirect
   } catch (err) {
-    // ONLY show error if it really failed
-    alert(err.response?.data?.message || 'Registration failed. Try again.')
+    errorMessage.value = err.response?.data?.message || 'Registration failed. Try again.';
   }
 }
 </script>
