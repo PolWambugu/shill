@@ -17,8 +17,9 @@ use App\Http\Controllers\VerifyEmailController;
 |--------------------------------------------------------------------------
 */
 
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
+Route::post('/register', [AuthController::class, 'register'])->name('register');
+Route::post('/login', [AuthController::class, 'login'])->name('login');
+
 
 Route::middleware('auth:sanctum')->group(function () { // <-- UNCOMMENT THIS GROUP START
     Route::post('/logout', [AuthController::class, 'logout']);

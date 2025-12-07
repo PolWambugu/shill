@@ -3,22 +3,18 @@
     class="relative min-h-screen bg-cover bg-center flex items-center justify-center px-6"
     style="background-image: url('/login-bg.jpg');"
   >
-    <!-- Dark overlay -->
     <div class="absolute inset-0 bg-black bg-opacity-60"></div>
 
-    <!-- Login Box -->
     <div
       class="relative bg-black bg-opacity-40 backdrop-blur-lg p-10 rounded-xl shadow-2xl w-full max-w-md border border-gray-700"
     >
       <h2 class="text-3xl font-bold text-center text-white mb-8">Login Form</h2>
 
-      <!-- Error Message -->
       <p v-if="errorMessage" class="text-red-400 text-center mb-4 font-semibold">
         {{ errorMessage }}
       </p>
 
       <form @submit.prevent="login" class="space-y-6">
-        <!-- Email -->
         <div class="relative">
           <span class="absolute left-4 top-4 text-gray-400 text-xl">👤</span>
           <input
@@ -30,7 +26,6 @@
           />
         </div>
 
-        <!-- Password -->
         <div class="relative">
           <span class="absolute left-4 top-4 text-gray-400 text-xl">🔒</span>
           <input
@@ -42,14 +37,10 @@
           />
         </div>
 
-        <!-- Forgot Password -->
         <div>
-          <a href="#" class="text-gray-300 text-sm hover:text-white">
-            Forgot Password?
-          </a>
+          <a href="#" class="text-gray-300 text-sm hover:text-white">Forgot Password?</a>
         </div>
 
-        <!-- Login Button -->
         <button
           type="submit"
           class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-md text-lg flex justify-center items-center gap-2"
@@ -71,31 +62,36 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import { useRouter } from 'vue-router';
-import { useAuthStore } from '@/stores/auth';
+import { ref, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 
-const email = ref('');
-const password = ref('');
-const errorMessage = ref('');
-const loading = ref(false);
+const email = ref('')
+const password = ref('')
+const errorMessage = ref('')
+const loading = ref(false)
 
-const router = useRouter();
-const auth = useAuthStore();
+const router = useRouter()
+const auth = useAuthStore()
 
 const login = async () => {
-  errorMessage.value = '';
-  loading.value = true;
+  errorMessage.value = ''
+  loading.value = true
 
   try {
-    await auth.login({ email: email.value, password: password.value });
+    await auth.login({ email: email.value, password: password.value })
 
-    if (auth.user.role === 'admin') router.replace('/admin');
-    else router.replace('/dashboard');
+    // ✅ Wait a tick to ensure reactivity updates
+    await nextTick()
+
+    // Redirect immediately based on role
+    if (auth.user?.role === 'admin') router.replace('/admin')
+    else router.replace('/dashboard')
   } catch (err) {
-    errorMessage.value = auth.error || 'Login failed. Try again.';
+    console.error(err)
+    errorMessage.value = auth.error || 'Login failed. Try again.'
   } finally {
-    loading.value = false;
+    loading.value = false
   }
-};
+}
 </script>

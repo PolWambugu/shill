@@ -27,7 +27,7 @@
 
     <!-- Pie Chart -->
     <div class="mt-6">
-      <canvas ref="pieChart" height="200"></canvas>
+      <canvas ref="pieChart" height="150"></canvas>
     </div>
   </div>
 </template>
@@ -37,6 +37,10 @@ import { ref, watch, onMounted } from 'vue'
 import Chart from 'chart.js/auto'
 import axios from 'axios'
 
+// Detect mock users
+const currentUser = JSON.parse(localStorage.getItem('user')) || {}
+const isMockUser = ['mary@greenfuel.com','john@ecopaper.com','fatma@bluewater.com','brian@solartech.com'].includes(currentUser.email)
+
 const plastic = ref(0)
 const paper = ref(0)
 const organic = ref(0)
@@ -44,6 +48,14 @@ const total = ref(0)
 
 const pieChart = ref(null)
 let pieInstance
+
+// For mock users, preload some values
+if (isMockUser) {
+  plastic.value = 5
+  paper.value = 3
+  organic.value = 7
+  total.value = plastic.value + paper.value + organic.value
+}
 
 watch([plastic, paper, organic], () => {
   total.value = plastic.value + paper.value + organic.value
@@ -61,8 +73,16 @@ const updateChart = () => {
 }
 
 const submitWaste = async () => {
-  await axios.post('/waste', { plastic, paper, organic, total: total.value })
-  alert('Waste data saved!')
+  if (isMockUser) {
+    alert('Mock data saved!')
+    return
+  }
+  try {
+    await axios.post('/waste', { plastic, paper, organic, total: total.value })
+    alert('Waste data saved!')
+  } catch (err) {
+    console.error('Failed to save waste data', err)
+  }
 }
 
 onMounted(() => updateChart())

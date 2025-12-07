@@ -9,7 +9,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import axios from 'axios'
 
@@ -17,7 +17,14 @@ const route = useRoute()
 const supplier = ref({})
 
 onMounted(async () => {
-  const res = await axios.get(`/suppliers/${route.params.id}`)
-  supplier.value = res.data
+  try {
+    const token = localStorage.getItem('token')
+    const res = await axios.get(`/api/suppliers/${route.params.id}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    supplier.value = res.data
+  } catch (e) {
+    console.error(e)
+  }
 })
 </script>

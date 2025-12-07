@@ -37,11 +37,11 @@
 
       <!-- CHARTS -->
       <div class="mt-6">
-        <canvas ref="barChart" height="200"></canvas>
+        <canvas ref="barChart" height="150"></canvas>
       </div>
 
       <div class="mt-6">
-        <canvas ref="pieChart" height="200"></canvas>
+        <canvas ref="pieChart" height="150"></canvas>
       </div>
     </div>
 
@@ -77,16 +77,21 @@ const barChart = ref(null)
 const pieChart = ref(null)
 let barInstance, pieInstance
 
+// MOCK DATA STORAGE
+const mockEmissionsData = {
+  'mary@greenfuel.com': [],
+  'john@ecopaper.com': [],
+  'fatma@bluewater.com': [],
+  'brian@solartech.com': []
+}
+
+const user = JSON.parse(localStorage.getItem('user')) || { email: '' }
+
 const computeTotal = () => {
   total.value = electricity.value * 12 * 0.0004 +
                 mileage.value * 52 * 0.0002 +
                 flights.value * 0.5
 }
-
-watch([electricity, mileage, flights], () => {
-  computeTotal()
-  updateCharts()
-})
 
 const updateCharts = () => {
   const data = [
@@ -100,25 +105,41 @@ const updateCharts = () => {
   barInstance = new Chart(barChart.value, {
     type: 'bar',
     data: { labels: ['Electricity','Mileage','Flights'], datasets:[{ label:'CO₂ (tons)', data, backgroundColor:['#10B981','#3B82F6','#8B5CF6'] }] },
-    options: { responsive:true, plugins:{ legend:{ display:false } } }
+    options: { responsive:true, plugins:{ legend:{ display:false } }, maintainAspectRatio:false }
   })
 
   pieInstance = new Chart(pieChart.value, {
     type: 'pie',
     data: { labels:['Electricity','Mileage','Flights'], datasets:[{ data, backgroundColor:['#10B981','#3B82F6','#8B5CF6'] }] },
-    options:{ responsive:true }
+    options:{ responsive:true, maintainAspectRatio:false }
   })
 }
 
+watch([electricity, mileage, flights], () => {
+  computeTotal()
+  updateCharts()
+})
+
 const submit = async () => {
-  await axios.post('/emissions', {
-    electricity_kwh: electricity.value,
-    mileage_km: mileage.value,
-    flights: flights.value,
-    total_co2: total.value
-  })
-  alert('Emissions saved!')
-}
+  // If it's a mock user, save to in-memory mock array
+  if (mockEmissionsData[user.email] !== undefined) {
+    mockEmissionsData[user.email].push({
+      id: mockEmissionsData[user.email].length + 1,
+      created_at: new Date().toISOString(),
+      total_co2: total.value
+    })
+    alert('Mock emissions saved!')
+  } else {
+    // Real users: save to backend
+    await axios.post('/emissions', {
+      electricity_kwh: electricity.value,
+      mileage_km: mileage.value,
+      flights: flights.value,
+      total_co2: total.value
+    })
+    alert('Emissions saved to database!')
+  }
+} 
 
 onMounted(() => updateCharts())
 </script>

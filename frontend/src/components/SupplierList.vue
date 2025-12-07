@@ -9,6 +9,7 @@
         <p class="text-gray-600">{{ s.email }} | {{ s.phone }}</p>
       </div>
       <button @click="viewSupplier(s)" class="text-emerald-600">View</button>
+
     </div>
   </div>
 </template>
@@ -17,6 +18,15 @@
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
 import SupplierForm from './SupplierForm.vue'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
+
+const viewSupplier = (supplier) => {
+  // navigate to /supplier/:id
+  router.push({ path: `/supplier/${supplier.id}`, state: { supplier } })
+}
+
 
 const suppliers = ref([])
 const showForm = ref(false)

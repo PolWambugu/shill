@@ -2,7 +2,7 @@
   <footer class="bg-gray-900 text-white py-16">
     <div class="max-w-7xl mx-auto px-8">
       <div class="grid grid-cols-1 md:grid-cols-4 gap-12">
-        
+
         <!-- Logo -->
         <div>
           <h3 class="text-4xl font-extrabold text-emerald-400 mb-6">ECOTRACK</h3>
@@ -11,14 +11,44 @@
           </p>
         </div>
 
-        <!-- Quick Links -->
-        <div>
+        <!-- Quick Links (only show if logged in) -->
+        <div v-if="isLoggedIn">
           <h4 class="text-lg font-bold text-emerald-400 mb-4">Quick Links</h4>
           <ul class="space-y-3">
-            <li><router-link to="/dashboard" class="text-gray-400 hover:text-white transition text-sm">Dashboard</router-link></li>
-            <li><router-link to="/emissions" class="text-gray-400 hover:text-white transition text-sm">Carbon Emissions</router-link></li>
-            <li><router-link to="/waste" class="text-gray-400 hover:text-white transition text-sm">Waste Tracking</router-link></li>
-            <li><router-link to="/resources" class="text-gray-400 hover:text-white transition text-sm">Resources</router-link></li>
+            <li v-if="role === 'user'">
+              <router-link to="/dashboard" class="text-gray-400 hover:text-white transition text-sm">
+                Dashboard
+              </router-link>
+            </li>
+            <li v-if="role === 'admin'">
+              <router-link to="/admin" class="text-gray-400 hover:text-white transition text-sm">
+                Admin Panel
+              </router-link>
+            </li>
+
+            <!-- User-only links -->
+            <li v-if="role === 'user'">
+              <router-link to="/emissions" class="text-gray-400 hover:text-white transition text-sm">
+                Carbon Emissions
+              </router-link>
+            </li>
+            <li v-if="role === 'user'">
+              <router-link to="/waste" class="text-gray-400 hover:text-white transition text-sm">
+                Waste Tracking
+              </router-link>
+            </li>
+            <li v-if="role === 'user'">
+              <router-link to="/resources" class="text-gray-400 hover:text-white transition text-sm">
+                Resources
+              </router-link>
+            </li>
+
+            <!-- Admin-only link -->
+            <li v-if="role === 'admin'">
+              <router-link to="/suppliers" class="text-gray-400 hover:text-white transition text-sm">
+                Suppliers
+              </router-link>
+            </li>
           </ul>
         </div>
 
@@ -47,3 +77,12 @@
     </div>
   </footer>
 </template>
+
+<script setup>
+import { computed } from 'vue'
+import { useAuthStore } from '@/stores/auth'
+
+const auth = useAuthStore()
+const isLoggedIn = computed(() => !!auth.token)
+const role = computed(() => auth.user?.role || null)
+</script>

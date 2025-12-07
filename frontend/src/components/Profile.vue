@@ -12,7 +12,7 @@
             <h2 class="text-4xl font-bold text-gray-900">{{ auth.user?.name }}</h2>
             <p class="text-xl text-gray-600">{{ auth.user?.email }}</p>
             <p class="text-lg text-emerald-600 mt-2">
-              {{ auth.user?.email_verified_at ? '✅ Email Verified' : '❌ Email Not Verified' }}
+              <!-- {{ auth.user?.email_verified_at ? '✅ Email Verified' : '❌ Email Not Verified' }} -->
             </p>
           </div>
         </div>
@@ -23,16 +23,6 @@
             <p class="text-lg">Total Emissions Entries: {{ emissionsCount }}</p>
             <p class="text-lg">Waste Entries: {{ wasteCount }}</p>
             <p class="text-lg">Member Since: {{ formatDate(auth.user?.created_at) }}</p>
-          </div>
-
-          <div class="bg-blue-50 p-8 rounded-2xl">
-            <h3 class="text-2xl font-bold text-blue-800 mb-4">Quick Actions</h3>
-            <button v-if="!auth.user?.email_verified_at" class="bg-orange-600 hover:bg-orange-500 text-white px-8 py-4 rounded-full font-bold">
-              Resend Verification Email
-            </button>
-            <button @click="logout" class="bg-red-600 hover:bg-red-500 text-white px-8 py-4 rounded-full font-bold mt-4 block">
-              Logout
-            </button>
           </div>
         </div>
       </div>
