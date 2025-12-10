@@ -30,12 +30,12 @@
       <div class="bg-white rounded-xl shadow p-6 text-center">
         <h2 class="text-lg font-semibold text-gray-700">My Waste</h2>
         <p class="text-5xl font-bold text-blue-400 mt-2">
-          {{ totalWaste }} <span class="text-2xl">kg</span>
+          {{ totalWaste }} <span class="text-2xl">t</span>
         </p>
       </div>
 
       <div class="bg-white rounded-xl shadow p-6 text-center">
-        <h2 class="text-lg font-semibold text-gray-700">My Water</h2>
+        <h2 class="text-lg font-semibold text-gray-700">My resources</h2>
         <p class="text-5xl font-bold text-cyan-400 mt-2">
           {{ totalWater }} <span class="text-2xl">L</span>
         </p>
@@ -57,7 +57,7 @@
         </div>
       </div>
       <div class="bg-white rounded-xl shadow p-6">
-        <h2 class="text-xl font-semibold mb-4 text-gray-700">My Water Usage Chart</h2>
+        <h2 class="text-xl font-semibold mb-4 text-gray-700">My Resource Chart</h2>
         <div class="h-48">
           <canvas id="waterChart"></canvas>
         </div>
@@ -68,148 +68,195 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from "vue";
-import Chart from "chart.js/auto";
+import { ref, onMounted, nextTick } from 'vue'
+import axios from 'axios'
+import Chart from 'chart.js/auto'
+import { useAuthStore } from '@/stores/auth'
 
-// STATE
-const totalCO2 = ref(0);
-const totalWaste = ref(0);
-const totalWater = ref(0);
-const filter = ref("monthly");
+const auth = useAuthStore()
 
-const filters = [
-  { label: "Daily", value: "daily" },
-  { label: "Weekly", value: "weekly" },
-  { label: "Monthly", value: "monthly" },
-  { label: "Yearly", value: "yearly" },
-];
+// --- CO₂ ---
+const totalCO2 = ref(0)
+const emissionsList = ref([])
+let co2Chart = null
 
-let co2Chart = null;
-let wasteChart = null;
-let waterChart = null;
-
-
-// MOCK DATA FOR PRESENTATION USERS (with filters)
-const mockUsers = [
-  {
-    email: "mary@greenfuel.com",
-    data: {
-      daily: { co2: 1, waste: 3, water: 8, chartData: [{label:'Mon',value:1},{label:'Tue',value:2},{label:'Wed',value:1},{label:'Thu',value:3},{label:'Fri',value:2}] },
-      weekly: { co2: 5, waste: 15, water: 40, chartData: [{label:'Week 1',value:5},{label:'Week 2',value:7},{label:'Week 3',value:4},{label:'Week 4',value:6}] },
-      monthly: { co2: 15, waste: 50, water: 120, chartData: [{label:'Jan',value:2},{label:'Feb',value:3},{label:'Mar',value:1},{label:'Apr',value:4}] },
-      yearly: { co2: 180, waste: 600, water: 1440, chartData: [{label:'2022',value:30},{label:'2023',value:40},{label:'2024',value:50},{label:'2025',value:60}] },
-    }
-  },
-  {
-    email: "john@ecopaper.com",
-    data: {
-      daily: { co2: 2, waste: 4, water: 10, chartData: [{label:'Mon',value:2},{label:'Tue',value:1},{label:'Wed',value:3},{label:'Thu',value:2},{label:'Fri',value:1}] },
-      weekly: { co2: 10, waste: 28, water: 60, chartData: [{label:'Week 1',value:6},{label:'Week 2',value:4},{label:'Week 3',value:8},{label:'Week 4',value:10}] },
-      monthly: { co2: 25, waste: 70, water: 180, chartData: [{label:'Jan',value:5},{label:'Feb',value:3},{label:'Mar',value:6},{label:'Apr',value:11}] },
-      yearly: { co2: 300, waste: 840, water: 2160, chartData: [{label:'2022',value:60},{label:'2023',value:70},{label:'2024',value:80},{label:'2025',value:90}] },
-    }
+const fetchEmissions = async () => {
+  if (!auth.token) return
+  try {
+    const res = await axios.get('http://127.0.0.1:8000/api/emissions', {
+      headers: { Authorization: `Bearer ${auth.token}` }
+    })
+    emissionsList.value = res.data
+    totalCO2.value = emissionsList.value.reduce((sum, e) => sum + parseFloat(e.total_co2 || 0), 0).toFixed(2)
+    await nextTick()
+    renderCo2Chart()
+  } catch (err) {
+    totalCO2.value = '0.00'
+    emissionsList.value = []
+    await nextTick()
+    renderCo2Chart()
   }
-];
+}
 
-// FETCH USER DASHBOARD DATA
-const fetchUserDashboard = async () => {
-  const token = localStorage.getItem("token");
-  const user = JSON.parse(localStorage.getItem("user"));
-  if (!token || !user) return;
+const renderCo2Chart = () => {
+  const ctx = document.getElementById('co2Chart')
+  if (!ctx) return
+  if (co2Chart) co2Chart.destroy()
 
-  // CHECK IF MOCK USER
-  const mockUser = mockUsers.find(u => u.email === user.email);
-  if (mockUser) {
-    const filteredData = mockUser.data[filter.value]; // <- respond to selected filter
-    totalCO2.value = filteredData.co2;
-    totalWaste.value = filteredData.waste;
-    totalWater.value = filteredData.water;
-    renderChart(filteredData.chartData);
-  } else {
-    // REAL USER - fetch from API
-    try {
-      const res = await fetch(`http://localhost:8000/api/dashboard/user?filter=${filter.value}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await res.json();
-      totalCO2.value = data.co2;
-      totalWaste.value = data.waste;
-      totalWater.value = data.water;
-      renderChart(data.chartData);
-    } catch (err) {
-      console.error("Failed to fetch user dashboard data", err);
-    }
+  const labels = emissionsList.value.length
+    ? emissionsList.value.map(e => new Date(e.created_at).toLocaleDateString())
+    : ['No data']
+  const data = emissionsList.value.length
+    ? emissionsList.value.map(e => parseFloat(e.total_co2))
+    : [0]
+
+  co2Chart = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets: [{ label: 'CO₂ (tons)', data, borderColor: '#10B981', backgroundColor: 'rgba(16,185,129,0.1)', tension: 0.4, fill: true, pointBackgroundColor: '#10B981', pointRadius: 5 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+  })
+}
+
+// --- WASTE ---
+const totalWaste = ref(0)
+let wasteChart = null
+
+const fetchWaste = async () => {
+  if (!auth.token) return
+  try {
+    const res = await axios.get('http://127.0.0.1:8000/api/wastes', { headers: { Authorization: `Bearer ${auth.token}` } })
+    const wastes = res.data
+    totalWaste.value = wastes.reduce((sum, w) => sum + parseFloat(w.plastic_kg || 0) + parseFloat(w.paper_kg || 0) + parseFloat(w.organic_kg || 0), 0).toFixed(2)
+    renderWasteChart(wastes)
+  } catch (err) {
+    totalWaste.value = '0.00'
   }
-};
+}
 
-// RENDER CHART
-const renderChart = (chartData) => {
-  const co2Ctx = document.getElementById("co2Chart");
-  const wasteCtx = document.getElementById("wasteChart");
-  const waterCtx = document.getElementById("waterChart");
-
-  if (co2Chart) co2Chart.destroy();
-  if (wasteChart) wasteChart.destroy();
-  if (waterChart) waterChart.destroy();
-
-  co2Chart = new Chart(co2Ctx, {
-    type: "line",
-    data: {
-      labels: chartData.map(i => i.label),
-      datasets: [{
-        label: "CO₂ Emissions",
-        data: chartData.map(i => i.value),
-        borderColor: "rgba(16, 185, 129, 0.9)",
-        backgroundColor: "rgba(16, 185, 129, 0.2)",
-        borderWidth: 3,
-        tension: 0.4,
-      }],
-    },
+const renderWasteChart = (wastes) => {
+  const ctx = document.getElementById('wasteChart')
+  if (!ctx) return
+  if (wasteChart) wasteChart.destroy()
+  const labels = wastes.map(w => new Date(w.created_at).toLocaleDateString())
+  const data = wastes.map(w => parseFloat(w.plastic_kg) + parseFloat(w.paper_kg) + parseFloat(w.organic_kg))
+  wasteChart = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: labels.length ? labels : ['No data'], datasets: [{ label: 'Total Waste (t)', data: data.length ? data : [0], backgroundColor: '#3B82F6' }] },
     options: { responsive: true, maintainAspectRatio: false }
-  });
+  })
+}
 
-  // reuse same data for waste and water charts as mock (scaled)
-  wasteChart = new Chart(wasteCtx, {
-    type: "line",
+// --- RESOURCES MULTI-LINE CHART ---
+const totalWater = ref(0)
+const totalFuel = ref(0)
+const totalUsage = ref(0)
+const resourcesList = ref([])
+let resourcesChart = null
+
+const fetchResources = async () => {
+  if (!auth.token) return
+  try {
+    const res = await axios.get('http://127.0.0.1:8000/api/resources', { 
+      headers: { Authorization: `Bearer ${auth.token}` } 
+    })
+
+    resourcesList.value = res.data
+
+    // Calculate totals
+    totalWater.value = resourcesList.value.reduce((sum, r) => sum + parseFloat(r.water_liters || 0), 0).toFixed(2)
+    totalFuel.value = resourcesList.value.reduce((sum, r) => sum + parseFloat(r.fuel_liters || 0), 0).toFixed(2)
+    totalUsage.value = resourcesList.value.reduce((sum, r) => sum + parseFloat(r.total_usage || 0), 0).toFixed(2)
+
+    await nextTick()
+    renderResourcesChart()
+
+  } catch (err) {
+    console.error('Failed to fetch resources:', err)
+    totalWater.value = '0.00'
+    totalFuel.value = '0.00'
+    totalUsage.value = '0.00'
+    resourcesList.value = []
+    await nextTick()
+    renderResourcesChart()
+  }
+}
+
+const renderResourcesChart = () => {
+  const ctx = document.getElementById('waterChart') // match template ID
+  if (!ctx) return
+  if (resourcesChart) resourcesChart.destroy()
+
+  const labels = resourcesList.value.length
+    ? resourcesList.value.map(r => new Date(r.recorded_at).toLocaleDateString())
+    : ['No data']
+
+  const waterData = resourcesList.value.length
+    ? resourcesList.value.map(r => parseFloat(r.water_liters || 0))
+    : [0]
+
+  const fuelData = resourcesList.value.length
+    ? resourcesList.value.map(r => parseFloat(r.fuel_liters || 0))
+    : [0]
+
+  const totalData = resourcesList.value.length
+    ? resourcesList.value.map(r => parseFloat(r.total_usage || 0))
+    : [0]
+
+  resourcesChart = new Chart(ctx, {
+    type: 'line',
     data: {
-      labels: chartData.map(i => i.label),
-      datasets: [{
-        label: "Waste",
-        data: chartData.map(i => i.value * 3),
-        borderColor: "rgba(59, 130, 246, 0.9)",
-        backgroundColor: "rgba(59, 130, 246, 0.2)",
-        borderWidth: 3,
-        tension: 0.4,
-      }]
+      labels,
+      datasets: [
+        {
+          label: 'Water (L)',
+          data: waterData,
+          borderColor: '#3B82F6',
+          backgroundColor: 'rgba(59,130,246,0.1)',
+          tension: 0.4,
+          fill: true,
+          pointRadius: 4
+        },
+        {
+          label: 'Fuel (L)',
+          data: fuelData,
+          borderColor: '#F97316',
+          backgroundColor: 'rgba(249,115,22,0.1)',
+          tension: 0.4,
+          fill: true,
+          pointRadius: 4
+        },
+        {
+          label: 'Total Usage',
+          data: totalData,
+          borderColor: '#10B981',
+          backgroundColor: 'rgba(16,185,129,0.1)',
+          tension: 0.4,
+          fill: true,
+          pointRadius: 4
+        }
+      ]
     },
-    options: { responsive: true, maintainAspectRatio: false }
-  });
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: true } },
+      scales: { y: { beginAtZero: true } }
+    }
+  })
+}
 
-  waterChart = new Chart(waterCtx, {
-    type: "line",
-    data: {
-      labels: chartData.map(i => i.label),
-      datasets: [{
-        label: "Water Usage",
-        data: chartData.map(i => i.value * 10),
-        borderColor: "rgba(0, 188, 212, 0.9)",
-        backgroundColor: "rgba(0, 188, 212, 0.2)",
-        borderWidth: 3,
-        tension: 0.4,
-      }]
-    },
-    options: { responsive: true, maintainAspectRatio: false }
-  });
-};
 
-// SET FILTER
-const setFilter = (value) => filter.value = value;
 
-// WATCH FILTER CHANGES
-watch(filter, fetchUserDashboard);
+// --- ON MOUNT ---
+onMounted(() => {
+  fetchEmissions()
+  fetchWaste()
+  fetchResources()
 
-// ON MOUNT
-onMounted(fetchUserDashboard);
+  window.addEventListener('emissions-updated', fetchEmissions)
+  window.addEventListener('waste-updated', fetchWaste)
+  window.addEventListener('resources-updated', fetchResources)
+})
 </script>
 
 <style scoped>

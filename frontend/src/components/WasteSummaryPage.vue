@@ -4,7 +4,7 @@
 
     <div v-for="(w, idx) in waste" :key="idx" class="border-b py-4">
       <p><strong>Date:</strong> {{ w.recorded_at || w.date }}</p>
-      <p>Total Waste: {{ ((w.plastic_kg || w.plastic) + (w.paper_kg || w.paper) + (w.organic_kg || w.organic)).toFixed(1) }} kg</p>
+      <p>Total Waste: {{ ((w.plastic_t || w.plastic) + (w.paper_t || w.paper) + (w.organic_t || w.organic)).toFixed(1) }} t</p>
     </div>
   </div>
 </template>

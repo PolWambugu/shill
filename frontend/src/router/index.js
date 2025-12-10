@@ -15,15 +15,15 @@ const routes = [
   { path: '/login', component: Login, meta: { hideLayout: true } },
   { path: '/register', component: SignUp, meta: { hideLayout: true } },
 
-   { path: '/suppliers', name: 'SupplierList', component: SupplierList, meta: { requiresAuth: true } },
+  { path: '/dashboard', component: DashBoard, meta: { requiresAuth: true } },
 
-  { path: '/dashboard', component: DashBoard, meta: { requiresAuth: true, role: 'user' } },
+  { path: '/suppliers', name: 'SupplierList', component: SupplierList, meta: { requiresAuth: true } },
+  { path: '/supplier/:id', component: SupplierDetails, props: true, meta: { requiresAuth: true } },
+
   { path: '/profile', component: () => import('@/components/Profile.vue'), meta: { requiresAuth: true } },
   { path: '/emissions', component: () => import('@/components/CarbonEmissionsInputForm.vue'), meta: { requiresAuth: true } },
-  { path: '/waste', component: () => import('@/components/WasteTrackingInputForm.vue'), meta: { requiresAuth: true } },
+  { path: '/waste', component: () => import('@/components/WasteInputForm.vue'), meta: { requiresAuth: true } },
   { path: '/resources', component: () => import('@/components/ResourceUsageInputForm.vue'), meta: { requiresAuth: true } },
-  { path: '/suppliers', component: () => import('@/components/SupplierList.vue'), meta: { requiresAuth: true } },
-  { path: '/supplier/:id', component: SupplierDetails, props: true },
 
   { path: '/admin', component: Admin, meta: { requiresAuth: true, role: 'admin' } },
 
@@ -37,27 +37,26 @@ const router = createRouter({
   routes
 });
 
-// Global navigation guard
+// GLOBAL ROUTER GUARD (reactive)
 router.beforeEach((to, from, next) => {
   const auth = useAuthStore();
-  const user = auth.user;
 
-  // 1️⃣ Redirect logged-in users from login/register
-  if ((to.path === '/login' || to.path === '/register') && auth.token) {
+  const user = auth.user;
+  const token = auth.token;
+
+  // Prevent navigating back to login/register when logged in
+  if ((to.path === '/login' || to.path === '/register') && token) {
     return next(user?.role === 'admin' ? '/admin' : '/dashboard');
   }
 
-  // 2️⃣ Protected routes require login
-  if (to.meta.requiresAuth && !auth.token) {
+  // Need login?
+  if (to.meta.requiresAuth && !token) {
     return next('/login');
   }
 
-  // 3️⃣ Role-based access
-  if (to.meta.role) {
-    // If user is logged in but role doesn’t match, redirect to their dashboard
-    if (!user || user.role !== to.meta.role) {
-      return next(user?.role === 'admin' ? '/admin' : '/dashboard');
-    }
+  // Role check
+  if (to.meta.role && user?.role !== to.meta.role) {
+    return next(user?.role === 'admin' ? '/admin' : '/dashboard');
   }
 
   next();

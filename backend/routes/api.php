@@ -3,12 +3,16 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
-use App\Http\Controllers\EmissionsController; // <-- UNCOMMENT THESE
-use App\Http\Controllers\WasteController;     // <-- UNCOMMENT THESE
-use App\Http\Controllers\ResourceController;  // <-- UNCOMMENT THESE
-use App\Http\Controllers\SupplierController;  // <-- UNCOMMENT THESE
-use App\Http\Controllers\ReportController;    // <-- UNCOMMENT THESE
+use App\Http\Controllers\EmissionsController; 
+use App\Http\Controllers\WasteController;     
+use App\Http\Controllers\ResourceUsageController;  
+use App\Http\Controllers\SupplierController;  
+use App\Http\Controllers\ReportController;    
 use App\Http\Controllers\VerifyEmailController;
+use App\Http\Controllers\UserController;
+use App\Models\User;
+
+
 
 
 /*
@@ -21,18 +25,31 @@ Route::post('/register', [AuthController::class, 'register'])->name('register');
 Route::post('/login', [AuthController::class, 'login'])->name('login');
 
 
-Route::middleware('auth:sanctum')->group(function () { // <-- UNCOMMENT THIS GROUP START
+Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
-    
-    Route::apiResource('emissions', EmissionsController::class);
-    Route::apiResource('waste', WasteController::class);
-    Route::apiResource('resources', ResourceController::class);
+
+    Route::get('/emissions', [EmissionsController::class, 'index']);
+    Route::post('/emissions', [EmissionsController::class, 'store']);
+    Route::delete('/emissions/{emission}', [EmissionsController::class, 'destroy']);
+
+    Route::apiResource('wastes', WasteController::class);
+    Route::apiResource('resources', ResourceUsageController::class)->only(['index', 'store']);
     Route::apiResource('suppliers', SupplierController::class);
+
     Route::get('/email/verify/{id}/{hash}', [VerifyEmailController::class, '__invoke'])
-     ->name('verification.verify');
-    
+         ->name('verification.verify');
+    Route::patch('/users/{id}/deactivate', [UserController::class, 'deactivate']);
+Route::patch('/users/{id}/activate', [UserController::class, 'activate']);
+
+    Route::get('/reports', [ReportController::class, 'index']);
     Route::get('/reports/summary', [ReportController::class, 'summary']);
-}); // <-- UNCOMMENT THIS GROUP END
+    
+
+    // ✅ Correct /users route
+    Route::get('/users', function (Request $request) {
+        return \App\Models\User::all();
+    });
+});
 
 Route::get('/dashboard/mock', function (Illuminate\Http\Request $request) {
 

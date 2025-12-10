@@ -1,149 +1,105 @@
 <template>
-  <div class="bg-white p-8 rounded-xl shadow-lg grid md:grid-cols-3 gap-10">
+  <div class="bg-white p-8 rounded-xl shadow-lg">
+    <h2 class="text-3xl font-bold mb-6 text-emerald-700">Carbon Emissions Calculator</h2>
 
-    <!-- LEFT: FORM -->
-    <div class="md:col-span-2">
-      <h2 class="text-3xl font-bold mb-6 text-emerald-700">Carbon Emissions Calculator</h2>
-
-      <form @submit.prevent="submit">
-        <div class="grid md:grid-cols-2 gap-6">
-          <div>
-            <label class="block text-gray-700 font-medium mb-2">Electricity (kWh/month)</label>
-            <input v-model.number="electricity" type="number" class="w-full p-3 border rounded-lg" required />
-          </div>
-
-          <div>
-            <label class="block text-gray-700 font-medium mb-2">Mileage (km/week)</label>
-            <input v-model.number="mileage" type="number" class="w-full p-3 border rounded-lg" required />
-          </div>
-
-          <div>
-            <label class="block text-gray-700 font-medium mb-2">Flights (per year)</label>
-            <input v-model.number="flights" type="number" class="w-full p-3 border rounded-lg" required />
-          </div>
+    <form @submit.prevent="submit" class="space-y-6">
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <label class="block text-gray-700 font-medium mb-2">Electricity (kWh/month)</label>
+          <input v-model.number="form.electricity" type="number" required
+                 class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
         </div>
+        <div>
+          <label class="block text-gray-700 font-medium mb-2">Mileage (km/week)</label>
+          <input v-model.number="form.mileage" type="number" required
+                 class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+        </div>
+        <div>
+          <label class="block text-gray-700 font-medium mb-2">Flights (per year)</label>
+          <input v-model.number="form.flights" type="number" required
+                 class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+        </div>
+      </div>
 
-        <button type="submit" class="mt-8 bg-emerald-600 text-white px-10 py-4 rounded-lg hover:bg-emerald-700 text-xl">
-          Save Emissions
-        </button>
-      </form>
-
-      <!-- LIVE TOTAL -->
-      <div v-if="total" class="mt-8 p-6 bg-emerald-50 rounded-xl text-center">
-        <p class="text-3xl font-bold text-emerald-700 animate-pulse">
-          Your Yearly CO₂: {{ total.toFixed(2) }} tons
+      <!-- Live Result — ONLY ONE (CLEAN & BEAUTIFUL) -->
+      <div v-if="total"
+           class="mt-8 p-8 rounded-2xl text-center border-4 shadow-xl transition-all duration-500"
+           :class="total > 2000 ? 'bg-red-100 border-red-500' : 'bg-emerald-50 border-emerald-500'">
+        <p class="text-5xl font-extrabold animate-pulse"
+           :class="total > 2000 ? 'text-red-600' : 'text-emerald-700'">
+          {{ total.toFixed(2) }} tons CO₂/year
+        </p>
+        <p v-if="total > 2000" class="text-xl text-red-600 font-bold mt-4">
+          High emissions! Try reducing your usage.
+        </p>
+        <p v-else class="text-xl text-emerald-600 font-bold mt-4">
+          Great job! You're on the right track.
         </p>
       </div>
 
-      <!-- CHARTS -->
-      <div class="mt-6">
-        <canvas ref="barChart" height="150"></canvas>
-      </div>
-
-      <div class="mt-6">
-        <canvas ref="pieChart" height="150"></canvas>
-      </div>
-    </div>
-
-    <!-- RIGHT: EXPLANATION -->
-    <div class="bg-gray-50 p-6 rounded-xl border">
-      <h3 class="text-2xl font-bold mb-4 text-gray-800">How We Calculate CO₂</h3>
-      <ul class="space-y-4 text-gray-700">
-        <li>🟩 Electricity: 0.0004 tons/kWh → yearly_kWh × 0.0004</li>
-        <li>🟦 Mileage: 0.0002 tons/km → km/week × 52 × 0.0002</li>
-        <li>🟪 Flights: 0.5 tons/flight → flights/year × 0.5</li>
-      </ul>
-      <hr class="my-4">
-      <p class="text-lg font-semibold text-emerald-600">Full Formula:</p>
-      <code class="block bg-white p-3 rounded text-sm leading-loose">
-        Total CO₂ = (electricity × 12 × 0.0004) + (mileage × 52 × 0.0002) + (flights × 0.5)
-      </code>
-    </div>
-
+      <button type="submit" :disabled="isSubmitting || total > 2000"
+              class="mt-8 w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-400 text-white py-5 rounded-xl font-bold text-2xl transition shadow-2xl transform hover:scale-105">
+        {{ isSubmitting ? 'Saving...' : 'Save Emissions' }}
+      </button>
+    </form>
   </div>
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue'
-import Chart from 'chart.js/auto'
+import { ref, reactive, computed, watch } from 'vue'
 import axios from 'axios'
+import { useAuthStore } from '@/stores/auth'
 
-const electricity = ref(0)
-const mileage = ref(0)
-const flights = ref(0)
-const total = ref(0)
+const auth = useAuthStore()
 
-const barChart = ref(null)
-const pieChart = ref(null)
-let barInstance, pieInstance
+const form = reactive({
+  electricity: 0,
+  mileage: 0,
+  flights: 0
+})
 
-// MOCK DATA STORAGE
-const mockEmissionsData = {
-  'mary@greenfuel.com': [],
-  'john@ecopaper.com': [],
-  'fatma@bluewater.com': [],
-  'brian@solartech.com': []
-}
+const isSubmitting = ref(false)
 
-const user = JSON.parse(localStorage.getItem('user')) || { email: '' }
+const total = computed(() => {
+  return (
+    form.electricity * 12 * 0.0004 +
+    form.mileage * 52 * 0.0002 +
+    form.flights * 0.5
+  )
+})
 
-const computeTotal = () => {
-  total.value = electricity.value * 12 * 0.0004 +
-                mileage.value * 52 * 0.0002 +
-                flights.value * 0.5
-}
-
-const updateCharts = () => {
-  const data = [
-    electricity.value * 12 * 0.0004,
-    mileage.value * 52 * 0.0002,
-    flights.value * 0.5
-  ]
-  if (barInstance) barInstance.destroy()
-  if (pieInstance) pieInstance.destroy()
-
-  barInstance = new Chart(barChart.value, {
-    type: 'bar',
-    data: { labels: ['Electricity','Mileage','Flights'], datasets:[{ label:'CO₂ (tons)', data, backgroundColor:['#10B981','#3B82F6','#8B5CF6'] }] },
-    options: { responsive:true, plugins:{ legend:{ display:false } }, maintainAspectRatio:false }
-  })
-
-  pieInstance = new Chart(pieChart.value, {
-    type: 'pie',
-    data: { labels:['Electricity','Mileage','Flights'], datasets:[{ data, backgroundColor:['#10B981','#3B82F6','#8B5CF6'] }] },
-    options:{ responsive:true, maintainAspectRatio:false }
-  })
-}
-
-watch([electricity, mileage, flights], () => {
-  computeTotal()
-  updateCharts()
+watch(total, () => {
+  window.dispatchEvent(new Event('emissions-updated'))
 })
 
 const submit = async () => {
-  // If it's a mock user, save to in-memory mock array
-  if (mockEmissionsData[user.email] !== undefined) {
-    mockEmissionsData[user.email].push({
-      id: mockEmissionsData[user.email].length + 1,
-      created_at: new Date().toISOString(),
-      total_co2: total.value
-    })
-    alert('Mock emissions saved!')
-  } else {
-    // Real users: save to backend
-    await axios.post('/emissions', {
-      electricity_kwh: electricity.value,
-      mileage_km: mileage.value,
-      flights: flights.value,
-      total_co2: total.value
-    })
-    alert('Emissions saved to database!')
+  if (total.value > 2000) {
+    alert('Emissions too high! Please reduce your usage.')
+    return
   }
-} 
 
-onMounted(() => updateCharts())
+  isSubmitting.value = true
+
+  try {
+    await axios.post('/emissions', {
+      electricity_kwh: form.electricity,
+      mileage_km: form.mileage,
+      flights: form.flights,
+      total_co2: total.value
+    })
+
+    alert('Emissions saved successfully!')
+
+    // Reset form
+    Object.assign(form, { electricity: 0, mileage: 0, flights: 0 })
+
+    // Update dashboard
+    window.dispatchEvent(new Event('emissions-updated'))
+
+  } catch (err) {
+    alert('Error: ' + (err.response?.data?.message || 'Try again'))
+  } finally {
+    isSubmitting.value = false
+  }
+}
 </script>
-
-<style scoped>
-.animate-pulse { transition: all 0.3s ease; }
-</style>

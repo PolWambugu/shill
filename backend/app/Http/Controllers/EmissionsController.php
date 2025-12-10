@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Emission;
+use App\Models\Emissions;   // ← Correct model (plural)
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -10,25 +10,25 @@ class EmissionsController extends Controller
 {
     public function index()
     {
-        return Emission::where('user_id', Auth::id())->latest()->get();
+        return Emissions::where('user_id', Auth::id())->latest()->get();
     }
 
     public function store(Request $request)
     {
-        $data = $request->validate([
+        $validated = $request->validate([
             'electricity_kwh' => 'required|numeric',
-            'mileage_km' => 'required|numeric',
-            'flights' => 'required|integer',
-            'total_co2' => 'required|numeric',
+            'mileage_km'      => 'required|numeric',
+            'flights'         => 'required|numeric',
+            'total_co2'       => 'required|numeric',
         ]);
 
-        $data['user_id'] = Auth::id();
-        $emission = Emission::create($data);
+        // This now works — no red error
+        $emission = Auth::user()->emissions()->create($validated);
 
         return response()->json($emission, 201);
     }
 
-    public function show(Emission $emission)
+    public function show(Emissions $emission)
     {
         if ($emission->user_id !== Auth::id()) {
             return response()->json(['message' => 'Unauthorized'], 403);
@@ -36,7 +36,7 @@ class EmissionsController extends Controller
         return $emission;
     }
 
-    public function destroy(Emission $emission)
+    public function destroy(Emissions $emission)
     {
         if ($emission->user_id !== Auth::id()) {
             return response()->json(['message' => 'Unauthorized'], 403);
